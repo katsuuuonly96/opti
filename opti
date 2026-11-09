@@ -1,0 +1,175 @@
+
+-- UNIVERSAL ROBLOX FPS BOOSTER
+-- Conservative client-side visual optimization
+-- For your own Roblox test environment
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local player = Players.LocalPlayer
+
+local enabled = false
+local saved = {}
+local originalGlobalShadows = Lighting.GlobalShadows
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "UniversalFPSBooster"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromOffset(235, 155)
+frame.Position = UDim2.new(0.5, -117, 0.5, -77)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 42)
+title.BackgroundTransparency = 1
+title.Text = "UNIVERSAL FPS BOOST"
+title.TextColor3 = Color3.fromRGB(170, 125, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.Parent = frame
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0.85, 0, 0, 40)
+button.Position = UDim2.new(0.075, 0, 0, 55)
+button.BackgroundColor3 = Color3.fromRGB(85, 50, 140)
+button.Text = "FPS BOOST: OFF"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Font = Enum.Font.GothamBold
+button.TextSize = 14
+button.Parent = frame
+
+Instance.new("UICorner", button).CornerRadius =
+    UDim.new(0, 8)
+
+local restoreButton = Instance.new("TextButton")
+restoreButton.Size = UDim2.new(0.85, 0, 0, 32)
+restoreButton.Position = UDim2.new(0.075, 0, 0, 105)
+restoreButton.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+restoreButton.Text = "RESTORE SETTINGS"
+restoreButton.TextColor3 = Color3.new(1, 1, 1)
+restoreButton.Font = Enum.Font.GothamBold
+restoreButton.TextSize = 12
+restoreButton.Parent = frame
+
+Instance.new("UICorner", restoreButton).CornerRadius =
+    UDim.new(0, 8)
+
+-- Save and optimize selected visual properties
+local function optimize()
+    saved.GlobalShadows = Lighting.GlobalShadows
+    Lighting.GlobalShadows = false
+
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj:IsA("ParticleEmitter")
+        or obj:IsA("Trail")
+        or obj:IsA("Beam") then
+
+            saved[obj] = obj.Enabled
+            obj.Enabled = false
+
+        elseif obj:IsA("BasePart") then
+            saved[obj] = {
+                Material = obj.Material,
+                Reflectance = obj.Reflectance
+            }
+
+            obj.Material = Enum.Material.SmoothPlastic
+            obj.Reflectance = 0
+        end
+    end
+end
+
+-- Restore original properties
+local function restore()
+    Lighting.GlobalShadows =
+        saved.GlobalShadows or originalGlobalShadows
+
+    for obj, data in pairs(saved) do
+        if typeof(obj) == "Instance" and obj.Parent then
+            if typeof(data) == "boolean" then
+                obj.Enabled = data
+
+            elseif typeof(data) == "table" then
+                obj.Material = data.Material
+                obj.Reflectance = data.Reflectance
+            end
+        end
+    end
+
+    table.clear(saved)
+end
+
+button.MouseButton1Click:Connect(function()
+    if not enabled then
+        optimize()
+        enabled = true
+
+        button.Text = "FPS BOOST: ON"
+        button.BackgroundColor3 =
+            Color3.fromRGB(35, 145, 85)
+    else
+        restore()
+        enabled = false
+
+        button.Text = "FPS BOOST: OFF"
+        button.BackgroundColor3 =
+            Color3.fromRGB(85, 50, 140)
+    end
+end)
+
+restoreButton.MouseButton1Click:Connect(function()
+    restore()
+    enabled = false
+
+    button.Text = "FPS BOOST: OFF"
+    button.BackgroundColor3 =
+        Color3.fromRGB(85, 50, 140)
+end)
+
+-- Draggable window
+local UIS = game:GetService("UserInputService")
+local dragging = false
+local dragStart
+local startPos
+
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch
+    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and (
+        input.UserInputType == Enum.UserInputType.Touch
+        or input.UserInputType == Enum.UserInputType.MouseMovement
+    ) then
+        local delta = input.Position - dragStart
+
+        frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch
+    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
